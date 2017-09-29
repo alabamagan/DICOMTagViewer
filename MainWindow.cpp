@@ -3,6 +3,7 @@
 #include <QTreeView>
 #include <QFileDialog>
 #include <QStringListModel>
+#include <QDialog>
 #include <QModelIndex>
 #include <QTreeWidgetItem>
 #include <QStandardItemModel>
@@ -82,12 +83,17 @@ void MainWindow::updateTreeWidget()
 void MainWindow::LoadFolder(QString dir)
 {
     /* Load all dicoms in the selected folder */
-    this->m_treebranchnames[this->m_treebranchnames.size()] = dir;
-
     SeriesGeneratorType::Pointer s = SeriesGeneratorType::New();
     s->SetInputDirectory(dir.toStdString().c_str());
     s->SetLoadSequences(true);
+	s->SetRecursive(true);
+	s->SetGlobalWarningDisplay(false);
     vector<string> fn = s->GetInputFileNames();
+	if (fn.size() == 0)
+	{
+		return;
+	}
+    this->m_treebranchnames[this->m_treebranchnames.size()] = dir;
 
     /* Sort the file name */
     std::sort(fn.begin(), fn.end());
@@ -108,6 +114,9 @@ void MainWindow::LoadFolder(std::string dir) {
 void MainWindow::slotTreeWidgetCurrentChanged()
 {
     QTreeWidgetItem* item = this->m_ui->treeWidgetFiles->selectedItems()[0];
+	if (!item)
+		return;
+
 
     int i = this->m_ui->treeWidgetFiles->indexOfTopLevelItem(item->parent());
     if (i == -1)
@@ -121,6 +130,7 @@ void MainWindow::displayTags(QString filename)
 {
     IoType::Pointer io = IoType::New();
     io->SetFileName(filename.toStdString());
+	io->LoadPrivateTagsOn();
     io->ReadImageInformation();
     itk::MetaDataDictionary dict = io->GetMetaDataDictionary();
 
