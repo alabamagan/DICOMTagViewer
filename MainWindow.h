@@ -34,7 +34,14 @@ public slots:
     void slotActionLoadFile();
     void slotTreeWidgetCurrentChanged();
 
+
 protected:
+	/// Interaction
+	void dragEnterEvent(QDragEnterEvent *event) override;
+	void dropEvent(QDropEvent *event) override;
+
+
+	/// IO
     void LoadFolder(QString);
     void LoadFolder(QStringList);
     void LoadFolder(std::string);

@@ -1,5 +1,9 @@
 #include "MainWindow.h"
 
+
+#include <QList>
+#include <QDropEvent>
+#include <QMimeData>
 #include <QTreeView>
 #include <QFileDialog>
 #include <QStringListModel>
@@ -7,6 +11,7 @@
 #include <QModelIndex>
 #include <QTreeWidgetItem>
 #include <QStandardItemModel>
+#include <QDebug>
 #include <algorithm>
 
 #include <itkGDCMImageIO.h>
@@ -29,6 +34,10 @@ MainWindow::MainWindow(QObject *parent)
             SIGNAL(itemSelectionChanged()),
             SLOT(slotTreeWidgetCurrentChanged()),
             Qt::UniqueConnection);
+
+	// Accept drag and drop
+	this->setAcceptDrops(true);
+	//this->m_ui->treeWidgetFiles->setAcceptDrops(true);
 
     this->m_ui->treeWidgetFiles->setHeaderHidden(true);
     this->m_ui->treeWidgetFiles->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -80,6 +89,34 @@ void MainWindow::updateTreeWidget()
 
 }
 
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+	if (event->mimeData()->hasUrls())
+		event->acceptProposedAction();
+}
+
+void MainWindow::dropEvent(QDropEvent *event)
+{
+	const QMimeData* mimeData = event->mimeData();
+
+	// check for our needed mime type, here a file or a list of files
+	if (mimeData->hasUrls())
+	{
+		QStringList pathList;
+		QList<QUrl> urlList = mimeData->urls();
+
+		// extract the local paths of the files
+		for (int i = 0; i < urlList.size(); i++)
+		{
+			pathList.append(urlList.at(i).toLocalFile());
+		}
+
+		// call a function to open the files
+		this->LoadFolder(pathList);
+	}
+}
+
 void MainWindow::LoadFolder(QString dir)
 {
     /* Load all dicoms in the selected folder */
@@ -103,8 +140,12 @@ void MainWindow::LoadFolder(QString dir)
     this->updateTreeWidget();
 }
 
-void MainWindow::LoadFolder(QStringList) {
-
+void MainWindow::LoadFolder(QStringList folderlist) {
+	for (QStringList::const_iterator iter = folderlist.cbegin(); iter != folderlist.cend(); iter++)
+	{
+		QString folder = *iter;
+		this->LoadFolder(*iter);
+	}
 }
 
 void MainWindow::LoadFolder(std::string dir) {
