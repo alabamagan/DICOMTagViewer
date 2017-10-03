@@ -7,7 +7,7 @@
 #include <QTreeView>
 #include <QFileDialog>
 #include <QStringListModel>
-#include <QDialog>
+#include <QMessageBox>
 #include <QModelIndex>
 #include <QTreeWidgetItem>
 #include <QStandardItemModel>
@@ -124,10 +124,28 @@ void MainWindow::LoadFolder(QString dir)
     s->SetInputDirectory(dir.toStdString().c_str());
     s->SetLoadSequences(true);
 	s->SetRecursive(true);
+	//s->SetUseSeriesDetails(true);
 	s->SetGlobalWarningDisplay(false);
-    vector<string> fn = s->GetInputFileNames();
+	gdcm::SerieHelper* helper = s->GetSeriesHelper();
+
+
+	vector<string> fn;
+	vector<string> series = s->GetSeriesUIDs();
+	for (vector<string>::const_iterator iter = series.cbegin(); iter != series.cend(); iter++)
+	{
+		vector<string> l_fn = s->GetFileNames(*iter);
+		fn.insert(fn.end(), l_fn.begin(), l_fn.end());
+	}
+
 	if (fn.size() == 0)
 	{
+		QMessageBox* msg = new QMessageBox(
+			QMessageBox::Critical,
+			QString("DICOM Tag Viewer - Error"),
+			QString("Cannot find any DICOM images in the specified directory!"),
+			QMessageBox::Ok
+			);
+		msg->exec();
 		return;
 	}
     this->m_treebranchnames[this->m_treebranchnames.size()] = dir;
@@ -158,12 +176,17 @@ void MainWindow::slotTreeWidgetCurrentChanged()
 	if (!item)
 		return;
 
+	try {
+		int i = this->m_ui->treeWidgetFiles->indexOfTopLevelItem(item->parent());
+		if (i == -1)
+			return;
 
-    int i = this->m_ui->treeWidgetFiles->indexOfTopLevelItem(item->parent());
-    if (i == -1)
-        return;
-
-    this->displayTags(QString::fromStdString(this->m_loadedFiles[i][item->parent()->indexOfChild(item)]));
+		this->displayTags(QString::fromStdString(this->m_loadedFiles[i][item->parent()->indexOfChild(item)]));
+	}
+	catch (...)
+	{
+		return;
+	}
 }
 
 
