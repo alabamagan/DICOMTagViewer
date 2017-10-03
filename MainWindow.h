@@ -26,7 +26,7 @@ public:
     explicit MainWindow(QObject* parent = nullptr);
     ~MainWindow();
 
-    typedef itk::GDCMImageIO IoType;
+    typedef itk::GDCMImageIO GDCMImageIO;
     typedef itk::GDCMSeriesFileNames SeriesGeneratorType;
 
 public slots:
@@ -48,9 +48,16 @@ protected:
     void LoadFiles(QStringList);
     void updateTreeWidget();
     void displayTags(QString filename);
+	void parseInputFileList(QString folder, std::vector<std::string> files);
 
-    QMap<int, QString> m_treebranchnames;
+    QMap<int, QString> m_folderNames;
+	// folder ->series
+	QMap<QString, QStringList> m_seriesNames;
+	// folder_series -> files
+	QMap<QString, QStringList> m_seriesFiles;
+
     QMap<int, std::vector<std::string>> m_loadedFiles;
+	QMap<QTreeWidgetItem*, QString> m_itemToFile;
     Ui_MainWindow* m_ui;
 };
 

@@ -19,6 +19,7 @@
 #include <itkMetaDataObject.h>
 #include <ui_MainWindow.h>
 #include <itkMetaDataObject.h>
+#include <QVector>
 
 using namespace std;
 
@@ -76,13 +77,24 @@ void MainWindow::updateTreeWidget()
     this->m_ui->treeWidgetFiles->clear();
 
 
-    for (int i = 0; i < this->m_treebranchnames.size(); ++i) {
+    for (int i = 0; i < this->m_folderNames.size(); ++i) {
         QTreeWidgetItem* item = new QTreeWidgetItem(this->m_ui->treeWidgetFiles);
-        item->setText(0, (this->m_treebranchnames[i].split('/').last()));
-        for (int j = 0; j < this->m_loadedFiles[i].size(); ++j) {
-            QTreeWidgetItem* node = new QTreeWidgetItem(item);
-            node->setText(0, QString::fromStdString(this->m_loadedFiles[i][j]).split('/').last());
-        }
+        item->setText(0, (this->m_folderNames[i].split('/').last()));
+
+		QStringList series = this->m_seriesNames[this->m_folderNames[i]];
+		for (QStringList::ConstIterator iter = series.cbegin(); iter != series.cend(); iter++)
+		{
+			QTreeWidgetItem* node = new QTreeWidgetItem(item);
+			node->setText(0, (*iter).split('/').last());
+
+			QStringList files = this->m_seriesFiles[this->m_folderNames[i] + "/" + *iter];
+			for (QStringList::ConstIterator inner_iter = files.cbegin(); inner_iter != files.cend(); inner_iter++)
+			{
+				QTreeWidgetItem* file_node = new QTreeWidgetItem(node);
+				file_node->setText(0, (*inner_iter).split('/').last());
+				this->m_itemToFile[file_node] = *inner_iter;
+			}
+		}
         this->m_ui->treeWidgetFiles->addTopLevelItem(item);
     }
 
@@ -148,11 +160,12 @@ void MainWindow::LoadFolder(QString dir)
 		msg->exec();
 		return;
 	}
-    this->m_treebranchnames[this->m_treebranchnames.size()] = dir;
 
     /* Sort the file name */
     std::sort(fn.begin(), fn.end());
     this->m_loadedFiles[this->m_loadedFiles.size()] = fn;
+
+	this->parseInputFileList(dir, fn);
 
     /* Display the filenames to tree widget */
     this->updateTreeWidget();
@@ -177,11 +190,9 @@ void MainWindow::slotTreeWidgetCurrentChanged()
 		return;
 
 	try {
-		int i = this->m_ui->treeWidgetFiles->indexOfTopLevelItem(item->parent());
-		if (i == -1)
-			return;
+		QString s = this->m_itemToFile[item];
 
-		this->displayTags(QString::fromStdString(this->m_loadedFiles[i][item->parent()->indexOfChild(item)]));
+		this->displayTags(s);
 	}
 	catch (...)
 	{
@@ -192,7 +203,7 @@ void MainWindow::slotTreeWidgetCurrentChanged()
 
 void MainWindow::displayTags(QString filename)
 {
-    IoType::Pointer io = IoType::New();
+	GDCMImageIO::Pointer io = GDCMImageIO::New();
     io->SetFileName(filename.toStdString());
 	io->LoadPrivateTagsOn();
     io->ReadImageInformation();
@@ -226,4 +237,59 @@ void MainWindow::displayTags(QString filename)
     this->m_ui->tableViewDICOMTags->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     this->m_ui->tableViewDICOMTags->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     this->m_ui->tableViewDICOMTags->verticalHeader()->hide();
+}
+
+void MainWindow::parseInputFileList(QString folder, std::vector<string> files)
+{
+	try {
+		/* Return if this folder is already parsed */
+		for (int i = 0; i < this->m_folderNames.count(); i++)
+		{
+			if (this->m_folderNames[i] == folder)
+				return;
+		}
+		this->m_folderNames[this->m_folderNames.size()] = folder;
+
+		// for all files
+		for (vector<string>::const_iterator iter = files.cbegin(); iter != files.cend(); iter++)
+		{
+			/* Read dictionary */
+			GDCMImageIO::Pointer io = GDCMImageIO::New();
+			io->SetFileName(*iter);
+			io->LoadPrivateTagsOn();
+			io->ReadImageInformation();
+			itk::MetaDataDictionary dict = io->GetMetaDataDictionary();
+
+			std::string patientname;
+			std::string description;
+			/* Read patient name and series name */
+			io->GetValueFromTag("0010|0010", patientname);
+			io->GetValueFromTag("0008|103e", description);
+			QString key = QString::fromStdString(patientname + "-" + description);
+			QString folderMapSeries = folder + QString::fromStdString( "/" ) + key;
+			/* if new patient/series, create a new key */
+			if (this->m_seriesNames.keys().indexOf(folder) == -1)
+			{
+				this->m_seriesNames[folder].push_back(key);
+			}
+			else
+			{
+				if (this->m_seriesNames[folder].indexOf(key) == -1)
+				{
+					this->m_seriesNames[folder].push_back(key);
+				}
+			}
+			this->m_seriesFiles[folderMapSeries].push_back(QString::fromStdString(*iter));
+		}
+		/*qDebug() << this->m_folderNames;
+		qDebug() << "============";
+		qDebug() << this->m_seriesNames;
+		qDebug() << "============";
+		qDebug() << this->m_seriesFiles;
+		qDebug() << "============";
+*/
+	}
+	catch (itk::ExceptionObject& e) {
+
+	}
 }
