@@ -6,6 +6,7 @@
 #include <QMainWindow>
 #include <QStringList>
 #include <QMap>
+#include <QHash>
 #include <ui_MainWindow.h>
 #include <vector>
 #include <string>
@@ -32,6 +33,7 @@ public:
 public slots:
     void slotActionLoadDirs();
     void slotActionLoadFile();
+	void slotActionLoadDICOMTag();
     void slotTreeWidgetCurrentChanged();
 
 
@@ -54,7 +56,9 @@ protected:
 	// folder ->series
 	QMap<QString, QStringList> m_seriesNames;
 	// folder_series -> files
-	QMap<QString, QStringList> m_seriesFiles;
+	QHash<QString, QStringList> m_seriesFiles;
+	QHash<QString, QString> m_tagNames;
+	QHash<QString, QString> m_tagTypes;
 
     QMap<int, std::vector<std::string>> m_loadedFiles;
 	QMap<QTreeWidgetItem*, QString> m_itemToFile;

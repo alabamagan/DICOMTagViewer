@@ -31,6 +31,7 @@ MainWindow::MainWindow(QObject *parent)
 
     connect(this->m_ui->actionLoad_Directories, SIGNAL(triggered()), SLOT(slotActionLoadDirs()));
     connect(this->m_ui->actionLoad_File, SIGNAL(triggered()), SLOT(slotActionLoadFile()));
+	connect(this->m_ui->actionLoad_DICOM_Tag_Dictionary, SIGNAL(triggered()), SLOT(slotActionLoadDICOMTag()));
     connect(this->m_ui->treeWidgetFiles,
             SIGNAL(itemSelectionChanged()),
             SLOT(slotTreeWidgetCurrentChanged()),
@@ -61,10 +62,22 @@ void MainWindow::slotActionLoadDirs()
 
         this->LoadFolder(dir);
     }
+	delete dialog;
 }
 
 void MainWindow::slotActionLoadFile() {
 
+}
+
+
+void MainWindow::slotActionLoadDICOMTag()
+{
+	QFileDialog dialog;
+	QString l = dialog.getOpenFileName(this, tr("Load DICOM Tag"), this->windowFilePath(), "*.txt");
+	if (QFileInfo(l).exists())
+	{
+
+	}
 }
 
 void MainWindow::LoadFiles(QStringList) {
@@ -135,7 +148,8 @@ void MainWindow::LoadFolder(QString dir)
     SeriesGeneratorType::Pointer s = SeriesGeneratorType::New();
     s->SetInputDirectory(dir.toStdString().c_str());
     s->SetLoadSequences(true);
-	s->SetRecursive(true);
+	s->SetRecursive(false);
+	s->SetNumberOfThreads(4);
 	//s->SetUseSeriesDetails(true);
 	s->SetGlobalWarningDisplay(false);
 	gdcm::SerieHelper* helper = s->GetSeriesHelper();
